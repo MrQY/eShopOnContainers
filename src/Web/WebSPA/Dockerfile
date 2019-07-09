@@ -1,16 +1,31 @@
-FROM microsoft/aspnetcore:2.0.5 AS base
+ARG NODE_IMAGE=node:8.11
+FROM mcr.microsoft.com/dotnet/core/aspnet:2.2 AS base
 WORKDIR /app
 EXPOSE 80
 
-FROM microsoft/aspnetcore-build:2.0.5-2.1.4 AS build
+FROM ${NODE_IMAGE} as node-build
+WORKDIR /web
+COPY src/Web/WebSPA .
+RUN npm install
+RUN npm run build:prod
+
+FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS build
 WORKDIR /src
+
+COPY scripts scripts/
+
+COPY src/ApiGateways/*/*.csproj /src/csproj-files/
+COPY src/ApiGateways/*/*/*.csproj /src/csproj-files/
+COPY src/BuildingBlocks/*/*/*.csproj /src/csproj-files/
+COPY src/Services/*/*/*.csproj /src/csproj-files/
+COPY src/Web/*/*.csproj /src/csproj-files/
+
 COPY . .
-RUN dotnet restore -nowarn:msb3202,nu1503
+COPY --from=node-build /web/wwwroot /src/src/Web/WebSPA/wwwroot/
 WORKDIR /src/src/Web/WebSPA
-RUN dotnet build --no-restore -c Release -o /app
+RUN dotnet publish -c Release -o /app
 
 FROM build AS publish
-RUN dotnet publish --no-restore -c Release -o /app
 
 FROM base AS final
 WORKDIR /app

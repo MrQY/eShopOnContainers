@@ -1,16 +1,23 @@
-FROM microsoft/aspnetcore:2.0.5 AS base
+FROM mcr.microsoft.com/dotnet/core/aspnet:2.2 AS base
 WORKDIR /app
 EXPOSE 80
 
-FROM microsoft/aspnetcore-build:2.0.5-2.1.4 AS build
+FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS build
 WORKDIR /src
+
+COPY scripts scripts/
+
+COPY src/ApiGateways/*/*.csproj /src/csproj-files/
+COPY src/ApiGateways/*/*/*.csproj /src/csproj-files/
+COPY src/BuildingBlocks/*/*/*.csproj /src/csproj-files/
+COPY src/Services/*/*/*.csproj /src/csproj-files/
+COPY src/Web/*/*.csproj /src/csproj-files/
+
 COPY . .
-RUN dotnet restore -nowarn:msb3202,nu1503
 WORKDIR /src/src/Services/Payment/Payment.API
-RUN dotnet build --no-restore -c Release -o /app
+RUN dotnet publish -c Release -o /app
 
 FROM build AS publish
-RUN dotnet publish --no-restore -c Release -o /app
 
 FROM base AS final
 WORKDIR /app
